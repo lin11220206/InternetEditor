@@ -168,7 +168,7 @@ int main()
                     int file_block_length = 0;
                     int check = 0;
                     while((file_block_length = fread(buffer, sizeof(char), 1024, fp)) > 0) {
-                        if(send(new_server_socket, buffer, file_block_length) < 0) {
+                        if(send(new_server_socket, buffer, file_block_length, 0) < 0) {
                             check = 1;
                             printf("Send File Failed\n");
                             break;
@@ -181,6 +181,27 @@ int main()
                     printf("Transfer File Successfully\n");
 
                     fp = fopen(fileName2, "wb");
+										
+					bzero(buffer, 1024);
+					int length = 0;
+					while( length = recv(new_server_socket, buffer, 1024, 0) )
+					{	
+						if( length < 0)
+						{
+							printf("Receive Data From Client Failed\n");
+							break;
+						}
+					
+						int write_length = fwrite(buffer, sizeof(char), length, fp);
+						if(write_length < length)
+						{	
+							printf("Write File Failed\n");
+		  					break;
+						}
+						bzero(buffer, BUFFER_SIZE);		
+					}
+					fclose(fp);
+					printf("End Receive File\n");
                 } else {
                     printf("Unkonwn Error Cause Illegal Command\n");
                     continue;
