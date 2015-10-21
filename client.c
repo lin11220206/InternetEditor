@@ -4,6 +4,7 @@
 #include<netinet/in.h>
 #include<sys/types.h>
 #include<sys/socket.h>
+#include<unistd.h>
 
 #define PORT 6666
 
@@ -48,7 +49,7 @@ int main()
     printf("You can enter 'help' to see help info \n");
     while(1) {
         bzero(command, 50);
-        bzero(fileName, 20);
+        bzero(fileName, 25);
         bzero(buffer, 1024);
 
         printf(">");
@@ -132,11 +133,11 @@ int main()
             if(strcmp(buffer, "fail") == 0)
                 printf("%s Doesn't Exist\n", fileName);
             else if(strcmp(buffer, "error") == 0)
-                printf("Open %s Failed\n", fileName);
+                printf("Access To %s Failed\n", fileName);
             else {
                 fp = fopen(fileName, "wb");
                 if(fp == NULL) {
-                    printf("Can't Open %s To Write\n", fileName);
+                    printf("Can't Create %s In Client\n", fileName);
                     continue;
                 }
                 int count = atoi(buffer);
@@ -159,6 +160,87 @@ int main()
                 printf("Download %s Successfully\n", fileName);
             }
         } else if(strcmp(inst, "edit") == 0) {
+			bzero(buffer, 1024);
+            strcpy(buffer, "d ");
+            strcat(buffer, fileName);
+            send(client_socket, buffer, 1024, 0);
+
+            bzero(buffer, 1024);
+            if( recv(client_socket, buffer ,1024, 0) <0)
+                printf("Receive Message Failed\n");
+
+            if(strcmp(buffer, "fail") == 0)
+                printf("%s Doesn't Exist\n", fileName);
+            else if(strcmp(buffer, "error") == 0)
+                printf("Access To %s Failed\n", fileName);
+            else {
+				char tmpName[25];
+				strcpy(tmpName, fileName);
+				strcat(tmpName, ".tmp");
+                fp = fopen(tmpName, "wb");
+                if(fp == NULL) {
+                    printf("Can't Open %s\n", fileName);
+                    continue;
+                }
+                int count = atoi(buffer);
+                bzero(buffer, 1024);
+                int length = 0;
+                while (count--) {
+                    length = recv(client_socket, buffer, 1024, 0);
+                    if(length < 0) {
+                        printf("Receive Data From Server Failed\n");
+                        break;
+                    }
+                    int write_length = fwrite(buffer, sizeof(char), length, fp);
+                    if(write_length < length) {
+                        printf("Write File Failed\n");
+                        break;
+                    }
+                    bzero(buffer, 1024);
+                }
+                fclose(fp);
+				char inst[30];				
+				bzero(inst, 30);
+				strcpy(inst, "vi ");
+				strcat(inst, tmpName);
+				printf("System Will Use 'vi' To Edit File, Press Any Key To Continue\n");
+				fgetc(stdin);				
+				system(inst);
+				
+				fp = fopen(tmpName, "rb");
+				if(fp == NULL)
+				{
+					printf("Save File Failed\n");
+					continue;
+				}
+				int file_block_length = 0;
+				int file_block_number = 0;
+				while(fread(buffer, sizeof(char), 1024, fp) > 0)
+					file_block_number++;
+					
+				rewind(fp);
+				sprintf(buffer, "%d", file_block_number);
+				send(client_socket, buffer, 1024, 0);
+				bzero(buffer, 1024);
+
+				while((file_block_length = fread(buffer, sizeof(char), 1024, fp)) > 0)
+				{
+					if(send(client_socket, buffer, file_block_length, 0) < 0)
+					{
+						printf("Save File Failed\n");
+						break;
+					}		
+					bzero(buffer, 1024);
+				}
+				fclose(fp);
+			
+				bzero(inst, 25);
+				strcpy(inst, "rm ");
+				strcat(inst, tmpName);
+				system(inst);
+                printf("Edit %s Successfully\n", fileName);
+            }
+	
         } else if(strcmp(inst, "quit") == 0) {
             bzero(buffer, 1024);
             strcpy(buffer, "q");
