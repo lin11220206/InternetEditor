@@ -23,13 +23,13 @@ int main()
         exit(1);
     }
 
-    if( bind(clinet_socket, (struct sockaddr*) &client_addr, sizeof(client_addr))) {
+    if( bind(client_socket, (struct sockaddr*) &client_addr, sizeof(client_addr))) {
         printf("Client Bind port Failed\n");
         exit(1);
     }
 
     struct sockaddr_in server_addr;
-    bzero(&server_adder, sizeof(server_addr));
+    bzero(&server_addr, sizeof(server_addr));
     server_addr.sin_family = PF_INET;
     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     server_addr.sin_port = htons(PORT);
@@ -51,12 +51,14 @@ int main()
         bzero(fileName, 20);
         bzero(buffer, 1024);
 
+        printf(">");
         fgets(command, sizeof(command), stdin);
+        sscanf(command, "%s %s", inst, fileName);
 
         //print help info
-        if( strcmp(command, "help") == 0 ) {
+        if( strcmp(inst, "help") == 0 ) {
             printf("To Create File: create [fileName]\n");
-            printf("To Edit File: create [fileName]\n");
+            printf("To Edit File: edit [fileName]\n");
             printf("To Remove File: remove [fileName]\n");
             printf("To List File: list\n");
             printf("To Downlaod File: download [fileName]\n");
@@ -64,9 +66,7 @@ int main()
             continue;
         }
 
-        sscanf(command, "%s %s", inst, fileName);
-
-        if (strcmp(inst, "create") == 0) {
+        else if (strcmp(inst, "create") == 0) {
             //send instruction
             bzero(buffer, 1024);
             strcpy(buffer, "c ");
@@ -78,14 +78,14 @@ int main()
             if( recv(client_socket, buffer, 1024, 0) < 0)
                 printf("Receive Message Failed\n");
 
-            if(strcmp(buffer, "fail")
-                    printf("%s Already Exist\n", fileName);
-                    else if(strcmp(buffer, "success")
-                                printf("Create %s Successfully\n", fileName);
-                                else
-                                    printf("Unkown Error\n");
+            if(strcmp(buffer, "fail") == 0)
+                printf("%s Already Exist\n", fileName);
+            else if(strcmp(buffer, "success") == 0)
+                printf("Create %s Successfully\n", fileName);
+            else
+                printf("Unkown Error\n");
 
-                } else if(strcmp(inst, "remove") == 0) {
+        } else if(strcmp(inst, "remove") == 0) {
             bzero(buffer, 1024);
             strcpy(buffer, "r ");
             strcat(buffer, fileName);
@@ -95,14 +95,14 @@ int main()
             if( recv(client_socket, buffer, 1024, 0) < 0)
                 printf("Receive Message Failed\n");
 
-            if(strcmp(buffer, "fail")
-                    printf("%s Doesn't Exist\n", fileName);
-                    else if(strcmp(buffer, "success")
-                                printf("Remove %s Successfully\n", fileName);
-                                else
-                                    printf("Unkown Error\n");
+            if(strcmp(buffer, "fail") == 0)
+                printf("%s Doesn't Exist\n", fileName);
+            else if(strcmp(buffer, "success") == 0)
+                printf("Remove %s Successfully\n", fileName);
+            else
+                printf("Unkown Error\n");
 
-                } else if(strcmp(inst, "list") == 0) {
+        } else if(strcmp(inst, "list") == 0) {
             bzero(buffer, 1024);
             strcpy(buffer, "l");
             send(client_socket, buffer, strlen(buffer), 0);
@@ -110,20 +110,20 @@ int main()
             bzero(buffer, 1024);
             if( recv(client_socket, buffer ,1024, 0) <0)
                 printf("Receive Message Failed\n");
-
-            printf("List Of Directory: \n");
+            printf("File in Directory: \n");
             int i, number = atoi(buffer);
             for(i=0; i<number; ++i) {
                 bzero(buffer, 1024);
                 recv(client_socket, buffer, 1024, 0);
                 printf("\t%s\n", buffer);
             }
+            printf("(end)\n");
 
         } else if(strcmp(inst, "download") == 0) {
             bzero(buffer, 1024);
             strcpy(buffer, "d ");
             strcat(buffer, fileName);
-            send(client_socket, buffer, strlen(buffer), 0);
+            send(client_socket, buffer, 1024, 0);
 
             bzero(buffer, 1024);
             if( recv(client_socket, buffer ,1024, 0) <0)
@@ -139,15 +139,15 @@ int main()
                     printf("Can't Open %s To Write\n", fileName);
                     continue;
                 }
-
+                int count = atoi(buffer);
                 bzero(buffer, 1024);
                 int length = 0;
-                while ( length = recv(client_socket, buffer, 1024, 0)) {
+                while (count--) {
+                    length = recv(client_socket, buffer, 1024, 0);
                     if(length < 0) {
                         printf("Receive Data From Server Failed\n");
                         break;
                     }
-
                     int write_length = fwrite(buffer, sizeof(char), length, fp);
                     if(write_length < length) {
                         printf("Write File Failed\n");
@@ -155,6 +155,8 @@ int main()
                     }
                     bzero(buffer, 1024);
                 }
+                fclose(fp);
+                printf("Download %s Successfully\n", fileName);
             }
         } else if(strcmp(inst, "edit") == 0) {
         } else if(strcmp(inst, "quit") == 0) {
